@@ -1,0 +1,40 @@
+from email.mime import image
+from enum import unique
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+from django.template.defaultfilters import slugify
+
+class Post(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=1)
+    title = models.CharField(max_length=120)
+    content = models.TextField()
+    draft = models.BooleanField(default=False)
+    created = models.DateTimeField(editable=False)
+    modified = models.DateTimeField()
+    slug = models.SlugField(unique=True, max_length=150, editable=False)
+    image = models.ImageField(upload_to = 'media/post/', null=True, blank=True)
+    modified_by_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='modified_by_user')
+
+    def __str__(self):
+        return self.title
+
+    def get_slug(self):
+        slug = slugify(self.title.replace('ı','i'))
+        unique = slug
+        number = 1
+        while Post.objects.filter(slug = unique).exists():
+            unique = '{}-{}'.format(slug, number)
+            number += 1           
+        return unique
+
+
+    def save(self, *args, **kwars):
+        if not self.id: # ilk defa oluşturuluyorsa id eklemek için
+            self.created = timezone.now() 
+        self.modified = timezone.now()
+        self.slug = self.get_slug()
+        return super(Post,self).save(*args, **kwars)
+ 
+
+
